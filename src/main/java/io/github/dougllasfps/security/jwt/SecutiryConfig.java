@@ -1,4 +1,4 @@
-package io.github.dougllasfps.config;
+package io.github.dougllasfps.security.jwt;
 
 
 import io.github.dougllasfps.service.impl.UsuarioServiceImpl;
@@ -9,8 +9,11 @@ import org.springframework.security.config.annotation.authentication.builders.Au
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.filter.OncePerRequestFilter;
 
 @EnableWebSecurity
 public class SecutiryConfig extends WebSecurityConfigurerAdapter {
@@ -18,17 +21,23 @@ public class SecutiryConfig extends WebSecurityConfigurerAdapter {
     @Autowired
     private UsuarioServiceImpl usuarioService;
 
+    @Autowired
+    private JWTService jwtService;
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
+    @Bean
+    public OncePerRequestFilter jwtFilter() {
+        return new JwtAuthFIlter(jwtService, usuarioService);
+    }
+
     @Override
     protected void configure(AuthenticationManagerBuilder auth) throws Exception {
-
         auth.userDetailsService(usuarioService)
                 .passwordEncoder(passwordEncoder());
-
     }
 
     @Override
@@ -44,10 +53,15 @@ public class SecutiryConfig extends WebSecurityConfigurerAdapter {
                         .hasAnyRole("USER", "ADMIN")
                     .antMatchers("/api/pedidos/**")
                         .hasAnyRole("USER", "ADMIN")
-                    .antMatchers(HttpMethod.POST, "/api/usuario/**")
+                    .antMatchers(HttpMethod.POST, "/api/usuarios/**")
                         .permitAll()
                     .anyRequest().authenticated()
                 .and()
-                    .httpBasic();
+                    .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                .and().addFilterBefore(jwtFilter(), UsernamePasswordAuthenticationFilter.class) ;
     }
+
+
+
+
 }

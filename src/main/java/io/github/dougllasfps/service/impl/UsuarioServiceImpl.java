@@ -2,6 +2,7 @@ package io.github.dougllasfps.service.impl;
 
 import io.github.dougllasfps.domain.entity.Usuario;
 import io.github.dougllasfps.domain.repository.UsuarioRepository;
+import io.github.dougllasfps.exception.SenhaInvalidaException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -23,22 +24,32 @@ public class UsuarioServiceImpl implements UserDetailsService {
     }
 
     @Transactional
-    public Usuario salvar (Usuario usuario) {
+    public Usuario salvar(Usuario usuario) {
         return usuarioRepository.save(usuario);
+    }
+
+
+    public UserDetails autenticar(Usuario usuario) {
+        UserDetails userDetails = loadUserByUsername(usuario.getLogin());
+        boolean senhasBatem = encoder().matches(usuario.getSenha(), userDetails.getPassword());
+        if (senhasBatem) {
+            return userDetails;
+        }
+        throw new SenhaInvalidaException();
     }
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
 
-       Usuario usuario =  usuarioRepository.findByLogin(username).orElseThrow(() -> new UsernameNotFoundException("Usuario nao encontrado"));
+        Usuario usuario = usuarioRepository.findByLogin(username).orElseThrow(() -> new UsernameNotFoundException("Usuario nao encontrado"));
 
-       String[] roles = usuario.isAdmin() ? new String[]{"ADMIN", "USER"} : new String[]{"USER"};
+        String[] roles = usuario.isAdmin() ? new String[]{"ADMIN", "USER"} : new String[]{"USER"};
 
-       return User
-               .builder()
-               .username(usuario.getLogin())
-               .password(usuario.getSenha())
-               .roles()
-               .build();
+        return User
+                .builder()
+                .username(usuario.getLogin())
+                .password(usuario.getSenha())
+                .roles(roles)
+                .build();
     }
 }
